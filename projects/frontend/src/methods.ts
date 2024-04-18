@@ -1,6 +1,9 @@
 import * as algokit from '@algorandfoundation/algokit-utils'
 import { DigitalMarketplaceClient } from './contracts/DigitalMarketplace'
 
+/**
+ * Create the application and opt it into the desired asset
+ */
 export function create(
   algorand: algokit.AlgorandClient, 
   dmClient: DigitalMarketplaceClient, 
@@ -21,6 +24,7 @@ export function create(
 
       assetId = BigInt(assetCreate.confirmation.assetIndex!)
     }
+    // Create the application
     const createResult = await dmClient.create.createApplication({ assetId: assetBeingSold, unitaryPrice})
 
     const mbrTxn = await algorand.transactions.payment({
@@ -30,14 +34,13 @@ export function create(
       extraFee: algokit .algos(0.001)
     })
 
-    await dmClient.optInToAsset({ mbrTxn })
+    await dmClient.optInToAsset({ mbrPay: mbrTxn })
 
     await algorand.send.assetTransfer({
-      sender,
-      receiver: createResult.appAddress,
       assetId,
+      sender,
+      receiver: createResult.appAddress,      
       amount: quantity,
-      
     })
 
     setAppId(Number(createResult.appId))
@@ -57,10 +60,14 @@ export function buy(
     const buyerTxn = await algorand.transactions.payment({
       sender,
       receiver: appAddress,
-      amount: algokit.microAlgos(Number(quantity * unitaryPrice))
+      amount: algokit.microAlgos(Number(quantity * unitaryPrice)),
+      extraFee: algokit.algos(0.001),
     })
 
-    await dmClient.buy({ buyerTxn, quantity })
+    await dmClient.buy({ 
+      buyerTxn, 
+      quantity, 
+    })
 
     const state =  await dmClient.getGlobalState()
     const info = await algorand.account.getAssetInformation(appAddress, state.assetId!.asBigInt())
@@ -70,7 +77,7 @@ export function buy(
 
 export function deleteApp(algorand: algokit.AlgorandClient, dmClient: DigitalMarketplaceClient, setAppId: (id: number) => void) {
   return async () => {
-    await dmClient.delete.deleteApplication({})
+    await dmClient.delete.deleteApplication({}, { sendParams: { fee: algokit.algos(0.003) } })
     setAppId(0)
   }
 }
