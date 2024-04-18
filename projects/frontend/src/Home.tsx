@@ -10,7 +10,7 @@ import { DigitalMarketplaceClient } from './contracts/DigitalMarketplace'
 import * as methods from './methods'
 import { getAlgodConfigFromViteEnvironment } from './utils/network/getAlgoClientConfigs'
 
-interface HomeProps {}
+interface HomeProps { }
 
 const Home: React.FC<HomeProps> = () => {
   AlgokitConfig.configure({ populateAppCallResources: true })

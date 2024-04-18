@@ -5,17 +5,17 @@ import { DigitalMarketplaceClient } from './contracts/DigitalMarketplace'
  * Create the application and opt it into the desired asset
  */
 export function create(
-  algorand: algokit.AlgorandClient, 
-  dmClient: DigitalMarketplaceClient, 
-  assetBeingSold: bigint, 
-  unitaryPrice: bigint, 
-  quantity: bigint,
+  algorand: algokit.AlgorandClient,
+  dmClient: DigitalMarketplaceClient,
   sender: string,
-  setAppId: (id: number) => void, 
+  unitaryPrice: bigint,
+  quantity: bigint,
+  assetBeingSold: bigint,
+  setAppId: (id: number) => void,
 ) {
   return async () => {
     let assetId = assetBeingSold
-    
+
     if (assetId === 0n) {
       const assetCreate = await algorand.send.assetCreate({
         sender,
@@ -24,14 +24,14 @@ export function create(
 
       assetId = BigInt(assetCreate.confirmation.assetIndex!)
     }
-    // Create the application
-    const createResult = await dmClient.create.createApplication({ assetId: assetBeingSold, unitaryPrice})
+
+    const createResult = await dmClient.create.createApplication({ assetId, unitaryPrice })
 
     const mbrTxn = await algorand.transactions.payment({
       sender,
       receiver: createResult.appAddress,
       amount: algokit.algos(0.1 + 0.1),
-      extraFee: algokit .algos(0.001)
+      extraFee: algokit.algos(0.001),
     })
 
     await dmClient.optInToAsset({ mbrPay: mbrTxn })
@@ -39,22 +39,22 @@ export function create(
     await algorand.send.assetTransfer({
       assetId,
       sender,
-      receiver: createResult.appAddress,      
+      receiver: createResult.appAddress,
       amount: quantity,
     })
 
     setAppId(Number(createResult.appId))
   }
-} 
+}
 
 export function buy(
-  algorand: algokit.AlgorandClient,  
-  dmClient: DigitalMarketplaceClient, 
+  algorand: algokit.AlgorandClient,
+  dmClient: DigitalMarketplaceClient,
   sender: string,
-  appAddress: string, 
+  appAddress: string,
   quantity: bigint,
   unitaryPrice: bigint,
-  setUnitsLeft: (units: BigInt) => void,
+  setUnitsLeft: React.Dispatch<React.SetStateAction<bigint>>,
 ) {
   return async () => {
     const buyerTxn = await algorand.transactions.payment({
@@ -64,18 +64,18 @@ export function buy(
       extraFee: algokit.algos(0.001),
     })
 
-    await dmClient.buy({ 
-      buyerTxn, 
-      quantity, 
+    await dmClient.buy({
+      buyerTxn,
+      quantity,
     })
 
-    const state =  await dmClient.getGlobalState()
+    const state = await dmClient.getGlobalState()
     const info = await algorand.account.getAssetInformation(appAddress, state.assetId!.asBigInt())
     setUnitsLeft(info.balance)
   }
 }
 
-export function deleteApp(algorand: algokit.AlgorandClient, dmClient: DigitalMarketplaceClient, setAppId: (id: number) => void) {
+export function deleteApp(dmClient: DigitalMarketplaceClient, setAppId: (id: number) => void) {
   return async () => {
     await dmClient.delete.deleteApplication({}, { sendParams: { fee: algokit.algos(0.003) } })
     setAppId(0)
